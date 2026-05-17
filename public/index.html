@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Converter</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="masthead" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Live portfolio tracker</p>
+          <h1 id="page-title">Stock Converter</h1>
+        </div>
+        <div class="status-panel" aria-live="polite">
+          <span class="pulse" aria-hidden="true"></span>
+          <span id="market-status">Waiting for holdings</span>
+        </div>
+      </section>
+
+      <section class="ticker-ribbon" aria-label="Tracked markets">
+        <div class="ticker-track">
+          <span>NASDAQ</span>
+          <span>NYSE</span>
+          <span>USD to INR</span>
+          <span>Portfolio</span>
+          <span>Live quotes</span>
+          <span>NASDAQ</span>
+          <span>NYSE</span>
+          <span>USD to INR</span>
+          <span>Portfolio</span>
+          <span>Live quotes</span>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="Portfolio summary">
+        <article class="summary-card primary">
+          <div class="card-label">Portfolio value</div>
+          <div id="portfolio-usd" class="big-number">$0.00</div>
+          <div class="converted-line">
+            <span id="portfolio-inr">₹0.00</span>
+            <span id="fx-rate">USD/INR: --</span>
+          </div>
+        </article>
+
+        <article class="summary-card">
+          <div class="card-label">Daily movement</div>
+          <div id="portfolio-change" class="metric-number">$0.00</div>
+          <div id="portfolio-change-inr" class="metric-subtext">₹0.00 today</div>
+        </article>
+
+        <article class="summary-card">
+          <div class="card-label">Holdings</div>
+          <div id="holding-count" class="metric-number">0</div>
+          <div id="refresh-detail" class="metric-subtext">Add your first stock</div>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <form id="holding-form" class="tool-panel" autocomplete="off">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Your stocks</p>
+              <h2>Add holding</h2>
+            </div>
+            <button class="icon-button" type="button" id="refresh-button" title="Refresh prices" aria-label="Refresh prices">
+              <span aria-hidden="true">↻</span>
+            </button>
+          </div>
+
+          <label for="symbol-input">Ticker or company name</label>
+          <input id="symbol-input" name="symbol" type="text" placeholder="micron, NVDA, BRK-B" maxlength="80" required />
+
+          <label for="quantity-input">Quantity</label>
+          <input id="quantity-input" name="quantity" type="number" placeholder="1" min="0.0001" step="0.0001" required />
+
+          <button class="primary-button" type="submit">Add or update holding</button>
+
+          <div class="quick-actions" aria-label="Quick examples">
+            <button type="button" data-symbol="NVDA" data-quantity="1">NVDA × 1</button>
+            <button type="button" data-symbol="TSLA" data-quantity="1">TSLA × 1</button>
+            <button type="button" data-symbol="BRK-B" data-quantity="1">BRK-B × 1</button>
+          </div>
+        </form>
+
+        <section class="tool-panel holdings-panel" aria-labelledby="holdings-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Live table</p>
+              <h2 id="holdings-title">Current holdings</h2>
+            </div>
+            <div class="currency-pill">USD → INR</div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                  <th>Value</th>
+                  <th>INR</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="holdings-body"></tbody>
+            </table>
+          </div>
+
+          <div id="empty-state" class="empty-state">
+            <strong>No holdings yet.</strong>
+            <span>Add any supported ticker or company name to see the combined USD and INR value update live.</span>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

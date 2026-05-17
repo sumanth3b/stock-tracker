@@ -1,0 +1,12 @@
+{
+  "name": "stock-converter",
+  "version": "1.0.0",
+  "description": "Live stock portfolio tracker with INR conversion.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
