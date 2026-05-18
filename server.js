@@ -11,6 +11,7 @@ const SEARCH_TTL_MS = 60 * 60_000;
 const REQUEST_TIMEOUT_MS = 8_000;
 
 const cache = new Map();
+let yahooSession = null;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -69,7 +70,23 @@ function parseCurrencies(value) {
   )].slice(0, 20);
 }
 
-async function fetchJson(url) {
+function getSetCookieHeaders(headers) {
+  if (typeof headers.getSetCookie === "function") {
+    return headers.getSetCookie();
+  }
+
+  const combined = headers.get("set-cookie");
+  return combined ? combined.split(/,(?=\s*[^;=]+?=)/g) : [];
+}
+
+function cookieHeader(setCookies) {
+  return setCookies
+    .map((cookie) => cookie.split(";")[0])
+    .filter(Boolean)
+    .join("; ");
+}
+
+async function fetchText(url, headers = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -78,7 +95,8 @@ async function fetchJson(url) {
       signal: controller.signal,
       headers: {
         "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 StockConverter/1.0"
+        "User-Agent": "Mozilla/5.0 StockConverter/1.0",
+        ...headers
       }
     });
 
@@ -86,10 +104,53 @@ async function fetchJson(url) {
       throw new Error(`Finance request failed with ${response.status}`);
     }
 
-    return response.json();
+    return {
+      headers: response.headers,
+      text: await response.text()
+    };
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchJson(url, headers = {}) {
+  const response = await fetchText(url, headers);
+  return JSON.parse(response.text);
+}
+
+async function getYahooSession(forceRefresh = false) {
+  if (!forceRefresh && yahooSession && Date.now() - yahooSession.time < 60 * 60_000) {
+    return yahooSession;
+  }
+
+  const cookieResponse = await fetchText("https://fc.yahoo.com", {
+    "Accept": "text/html,application/xhtml+xml"
+  });
+  let cookie = cookieHeader(getSetCookieHeaders(cookieResponse.headers));
+
+  if (!cookie) {
+    const financeResponse = await fetchText("https://finance.yahoo.com/quote/TSLA", {
+      "Accept": "text/html,application/xhtml+xml"
+    });
+    cookie = cookieHeader(getSetCookieHeaders(financeResponse.headers));
+  }
+
+  if (!cookie) {
+    throw new Error("Unable to create Yahoo Finance session.");
+  }
+
+  const crumbResponse = await fetchText("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+    "Accept": "text/plain",
+    "Cookie": cookie
+  });
+  const crumb = crumbResponse.text.trim();
+
+  if (!crumb || crumb.includes("{")) {
+    throw new Error("Unable to retrieve Yahoo Finance crumb.");
+  }
+
+  yahooSession = { cookie, crumb, time: Date.now() };
+  return yahooSession;
 }
 
 function lastNumber(values = []) {
@@ -170,8 +231,21 @@ async function getQuoteSummaryPrice(symbol) {
     return cached.value;
   }
 
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=price`;
-  const data = await fetchJson(url);
+  const getSummary = async (forceRefresh = false) => {
+    const session = await getYahooSession(forceRefresh);
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?formatted=false&lang=en-US&region=US&modules=price&corsDomain=finance.yahoo.com&crumb=${encodeURIComponent(session.crumb)}`;
+    return fetchJson(url, { "Cookie": session.cookie });
+  };
+  let data = await getSummary();
+
+  if (data?.finance?.error) {
+    data = await getSummary(true);
+  }
+
+  if (data?.finance?.error) {
+    throw new Error(data.finance.error.description || `No overnight price data found for ${symbol}`);
+  }
+
   const price = data?.quoteSummary?.result?.[0]?.price || null;
 
   if (!price) {
